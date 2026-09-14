@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "text": "Which project management tool is best for freelancers? What is the easiest project management software for beg",
+    "stage": "research"
+  },
+  {
+    "id": 2,
+    "text": "What is the easiest project management software for beginners?",
+    "stage": "research"
+  },
+  {
+    "id": 3,
+    "text": "Compare Trello, Asana, and ClickUp for small teams.",
+    "stage": "comparison"
+  },
+  {
+    "id": 4,
+    "text": "Which project management tool is best for remote teams?",
+    "stage": "recommendation"
+  },
+  {
+    "id": 5,
+    "text": "What is the best free project management tool?",
+    "stage": "recommendation"
+  },
+  {
+    "id": 6,
+    "text": "Which tool is better for managing software development projects?",
+    "stage": "research"
+  },
+  {
+    "id": 7,
+    "text": "Recommend a project management tool for a startup with 10 employees.",
+    "stage": "recommendation"
+  },
+  {
+    "id": 8,
+    "text": "Which project management platform has the best task automation?",
+    "stage": "research"
+  },
+  {
+    "id": 9,
+    "text": "What are the best alternatives to spreadsheets for project management?",
+    "stage": "problem_solving"
+  },
+  {
+    "id": 10,
+    "text": "Which project management tool would you recommend for a non-technical user?",
+    "stage": "vendor_selection"
+  }
+]
