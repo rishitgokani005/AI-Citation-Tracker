@@ -12,6 +12,7 @@ import logging
 from typing import List, Dict, Any
 
 import config
+import db_manager
 import query_engine
 import response_parser
 
@@ -31,7 +32,7 @@ def run_pipeline(platform: str = "gemini", force: bool = False) -> Dict[str, Any
 
     Args:
         platform: Target LLM platform (default: "gemini").
-        force: If True, re-query and overwrite existing DB records for all prompts.
+        force: If True, clears the database before re-running all prompts.
 
     Returns:
         Dict summary of pipeline execution stats.
@@ -39,10 +40,16 @@ def run_pipeline(platform: str = "gemini", force: bool = False) -> Dict[str, Any
     logger.info(f"Starting AI Citation Tracker pipeline for platform: '{platform}'")
     logger.info(f"Grounding enabled: {config.ENABLE_GROUNDING}")
 
-    # 1. Initialize Database
-# (No DB initialization needed; pipeline runs fresh each execution)
+    # 1. Initialize DB schema (creates tables if they don't exist yet)
+    db_manager.init_db()
 
-    # 2. Load Prompts & Brands
+    # 2. Clear database if --force flag is set
+    if force:
+        logger.info("--force flag detected: clearing existing database records before re-running.")
+        db_manager.clear_database()
+        logger.info("Database cleared successfully.")
+
+    # 3. Load Prompts & Brands
     prompts = load_json_file(config.PROMPTS_PATH)
     brands = load_json_file(config.BRANDS_PATH)
     logger.info(f"Loaded {len(prompts)} prompts and {len(brands)} seed brands.")
@@ -58,16 +65,15 @@ def run_pipeline(platform: str = "gemini", force: bool = False) -> Dict[str, Any
         "fallback_citations": 0
     }
 
-    # 3. Iterate over prompts
+    # 4. Iterate over prompts
     for p in prompts:
         prompt_id = p["id"]
         prompt_text = p["text"]
         stage = p.get("stage", "unknown")
 
-        logger.info(f"--- [Prompt {prompt_id}/15] ({stage}) ---")
+        logger.info(f"--- [Prompt {prompt_id}/{len(prompts)}] ({stage}) ---")
 
-        # No existing record check – always process prompts fresh
-        # Query API
+        # Query Gemini API
         query_result = query_engine.query_gemini(prompt_text)
         raw_text = query_result.get("raw_text", "")
         error = query_result.get("error")
@@ -79,27 +85,45 @@ def run_pipeline(platform: str = "gemini", force: bool = False) -> Dict[str, Any
             stats["api_errors"] += 1
             continue
 
-        # Parse Response — pass grounding citations through so the parser
-        # uses real sources instead of falling back to regex-scraped text
+        # Parse response for brand mentions and citations
         parsed = response_parser.parse_response(
             raw_text, brands, grounding_citations=grounding_citations
         )
         mentions = parsed["mentions"]
         citations = parsed["citations"]
 
-        # Track whether citations came from grounding or the regex fallback,
-        # useful for sanity-checking how often grounding actually returns sources
+        # Persist response to database
+        response_id = db_manager.insert_response(
+            prompt_id=prompt_id,
+            platform=platform,
+            raw_text=raw_text
+        )
+
+        # Persist mentions to database
+        for mention in mentions:
+            db_manager.insert_mention(
+                response_id=response_id,
+                brand_name=mention["brand_name"],
+                position=mention["position"],
+                sentiment=mention["sentiment"]
+            )
+
+        # Persist citations to database
+        for citation in citations:
+            db_manager.insert_citation(
+                response_id=response_id,
+                source_url=citation.get("source_url"),
+                source_domain=citation.get("source_domain", "")
+            )
+
+        # Track citation source type
         if was_grounded and grounding_citations:
             stats["grounded_citations"] += len(citations)
         else:
             stats["fallback_citations"] += len(citations)
 
-        # Update overall stats (no DB writes)
         stats["total_mentions"] += len(mentions)
         stats["total_citations"] += len(citations)
-
-# Citations are not persisted to a database; they are counted in stats only.
-
         stats["processed"] += 1
         logger.info(f"Saved prompt {prompt_id}: Found {len(mentions)} mentions, {len(citations)} citations.")
 
@@ -123,7 +147,7 @@ def run_pipeline(platform: str = "gemini", force: bool = False) -> Dict[str, Any
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run AI Citation Tracker Pipeline")
     parser.add_argument("--platform", type=str, default="gemini", help="Target LLM platform (default: gemini)")
-    parser.add_argument("--force", action="store_true", help="Force re-run all prompts even if already in DB")
+    parser.add_argument("--force", action="store_true", help="Clear DB and re-run all prompts fresh")
     args = parser.parse_args()
 
     run_pipeline(platform=args.platform, force=args.force)

@@ -22,6 +22,19 @@ try:
 except ImportError:
     from src import config, analysis, db_manager, data_manager, run_pipeline
 
+# Ensure the SQLite schema exists before any query touches it.
+# On a fresh deploy (e.g. Streamlit Cloud) the .db file may not exist yet,
+# or may exist without tables — db_manager.get_connection() will happily
+# create an empty file, but only init_db() actually runs schema.sql.
+# Without this, the very first analytics query fails with
+# "no such table: responses" (surfaced by Streamlit as a redacted
+# pandas.errors.DatabaseError).
+try:
+    db_manager.init_db()
+except Exception as init_err:
+    st.error(f"Failed to initialize database schema: {init_err}")
+    st.stop()
+
 # Page Configuration
 st.set_page_config(
     page_title="AI Citation Tracker Dashboard",
@@ -52,10 +65,20 @@ with tab_analytics:
     stage_arg = None if selected_stage == "All" else selected_stage
     platform_arg = None
 
-    df_share = analysis.get_mention_share(stage_filter=stage_arg, platform_filter=platform_arg)
-    df_pos = analysis.get_average_position(stage_filter=stage_arg, platform_filter=platform_arg)
-    df_sources = analysis.get_citation_domains(stage_filter=stage_arg, platform_filter=platform_arg)
-    insights = analysis.generate_insights(stage_filter=stage_arg, platform_filter=platform_arg)
+    try:
+        df_share = analysis.get_mention_share(stage_filter=stage_arg, platform_filter=platform_arg)
+        df_pos = analysis.get_average_position(stage_filter=stage_arg, platform_filter=platform_arg)
+        df_sources = analysis.get_citation_domains(stage_filter=stage_arg, platform_filter=platform_arg)
+        insights = analysis.generate_insights(stage_filter=stage_arg, platform_filter=platform_arg)
+    except Exception as data_err:
+        st.error(
+            "Could not load analytics data from the database. "
+            "This usually means the pipeline hasn't been run yet on this "
+            "deployment. Go to the ⚙️ Manage & Run Pipeline tab and click "
+            "'Run Pipeline Now' to populate it."
+        )
+        st.caption(f"Details: {data_err}")
+        st.stop()
 
     # High Level KPI Cards
     col1, col2, col3, col4 = st.columns(4)

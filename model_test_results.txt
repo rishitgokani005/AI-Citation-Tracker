@@ -1,0 +1,5 @@
+gemini-2.5-flash: Grounded FAIL -> 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to 
+gemini-2.5-flash-lite: Grounded FAIL -> 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your cod
+gemini-2.0-flash: Grounded FAIL -> 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use models/ge
+gemini-1.5-flash: Grounded FAIL -> 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateConten
+gemini-3.5-flash-lite: Grounded FAIL -> 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more info
