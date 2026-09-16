@@ -5,11 +5,24 @@ from dotenv import load_dotenv
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent
 
-# Load environment variables from .env file
+# Load environment variables from .env file (for local development)
 load_dotenv(BASE_DIR / ".env")
 
 # API Configuration
+# Prefer os.environ (works locally via .env, and on most platforms).
+# Fall back to Streamlit's st.secrets, since Streamlit Cloud secrets aren't
+# always mirrored into os.environ before this module is imported.
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+
+if not GOOGLE_API_KEY:
+    try:
+        import streamlit as st
+        GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "")
+    except Exception:
+        # Not running inside Streamlit (e.g. run_pipeline.py from the CLI
+        # with no secrets.toml present) — just keep the empty string and
+        # let get_api_key_or_raise() report it clearly.
+        pass
 
 # Using model identifier. Normalizes human-friendly strings like "Gemini 3.1 Flash Lite" to valid API ID "gemini-3.1-flash-lite".
 raw_model = os.getenv("MODEL_NAME", "gemini-3.1-flash-lite")
